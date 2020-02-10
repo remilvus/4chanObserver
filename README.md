@@ -1,0 +1,1 @@
+downloader: https://github.com/amnay-mo/4chan-downloader

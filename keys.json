@@ -1,0 +1,4 @@
+{
+  "land_vehicles": ["car", "train"],
+  "flying_vehicles": ["plane", "drone"]
+}
