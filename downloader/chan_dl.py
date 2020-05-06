@@ -2,19 +2,35 @@
 import urllib3
 import asyncio
 import aiohttp
+from aiohttp.client_exceptions import ServerDisconnectedError, ClientOSError
 import json
 import os
 import re
 from tqdm import tqdm
+from observer import log
 
-async def download_post(board, post, output_dir, http, pbar):
-    url = 'http://i.4cdn.org/%s/%s%s' % (board, post['tim'], post['ext'])
-    async with http.get(url) as r:     
-        with open('%s/%s%s' % (output_dir, post['tim'], post['ext']), 'wb') as f:
-            data = await r.content.read()
-            f.write(data)
-            pbar.update(1)
-        await r.release()
+
+async def download_post(board, post, output_dir, http, pbar, max_tires=10):
+    try_num = 0
+    done = False
+    while try_num < max_tires and not done:
+        try:
+            url = 'http://i.4cdn.org/%s/%s%s' % (board, post['tim'], post['ext'])
+            async with http.get(url) as r:
+                with open('%s/%s%s' % (output_dir, post['tim'], post['ext']), 'wb') as f:
+                    data = await r.content.read()
+                    f.write(data)
+                    pbar.update(1)
+                await r.release()
+                done = True
+        except (TimeoutError, ServerDisconnectedError, ClientOSError, asyncio.TimeoutError) as e:
+            try_num += 1
+            if try_num < max_tires:
+                log("error_log.txt", f"{repr(e)} #{try_num} Retrying to download image...")
+            else:
+                log("error_log.txt", f"{repr(e)} #{try_num} Download abandoned...")
+                print("One download abandoned...\n")
+
 
 
 def create_output_dir(output_dir):

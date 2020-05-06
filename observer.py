@@ -7,6 +7,7 @@ import time
 import argparse
 import socket
 from datetime import date
+import traceback
 
 def check_connection():
     try:
@@ -60,9 +61,9 @@ def filter_links(links, desired_keys):
                 break
     return desired_links
 
-def log(link):
-    f = open("log.txt", "a+")
-    f.write(link + "\n")
+def log(filename, message):
+    with  open(filename, "a+") as f:
+        f.write(message + "\n")
 
 def was_used(link):
     if not os.path.exists("log.txt"): return False
@@ -81,27 +82,35 @@ def observe(board):
     for link in filtered:
         if not was_used(link["link"]):
             print(f"downloading {link['link']}")
-            log(link["link"])
+            log("log.txt", link["link"])
             downloader.run("http://boards.4channel.org" + link["link"], link["dir"])
             print()
 
 
 if __name__=="__main__":
-    parser = argparse.ArgumentParser(description='Automatic board observation and image scraping')
-    parser.add_argument("-b", "--board", help="letter code of the board to be observed", required=True)
-    args = parser.parse_args()
-    board = args.board
-    check_connection()
-    check_board(board)
-    last_download_day = date.today().day - 1
-    print(f"observing {board}...")
-    while True:
-        if last_download_day != date.today().day:
-            try:
-                observe(board)
-                last_download_day = date.today().day
-            except urllib3.exceptions.MaxRetryError:
-                pass
-        print("sleeping...", end='\r')
-        time.sleep(60 * 60)  # sleep for an hour
+    try:
+        parser = argparse.ArgumentParser(description='Automatic board observation and image scraping')
+        parser.add_argument("-b", "--board", help="letter code of the board to be observed", required=True)
+        args = parser.parse_args()
+        board = args.board
+        check_connection()
+        check_board(board)
+        last_download_day = date.today().day - 1
+        print(f"observing {board}...")
+        while True:
+            if last_download_day != date.today().day:
+                try:
+                    observe(board)
+                    last_download_day = date.today().day
+                except urllib3.exceptions.MaxRetryError:
+                    pass
+            print("sleeping...", end='\r')
+            time.sleep(60 * 60)  # sleep for an hour
+    except Exception as e:
+        tb = "".join(traceback.format_exception(e.__class__, e, e.__traceback__))
+        log("error_log.txt", repr(e) + "\n" + tb + "\n")
+        raise e
+
+
+
 
